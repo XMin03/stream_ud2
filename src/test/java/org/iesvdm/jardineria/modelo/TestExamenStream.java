@@ -144,7 +144,7 @@ class TestExamenStream {
             List<Oficina> list = oficinaHome.findAll();
 
             //TODO STREAMS
-            var solList = list.stream();
+            var solList = list.stream().sorted(comparing(Oficina::getCiudad).reversed()).map(o->"Ciudad: "+o.getCiudad()+" Telefono: "+o.getTelefono()).toList();
 
             solList.forEach(System.out::println);
 
@@ -172,7 +172,9 @@ class TestExamenStream {
             List<Empleado> list = empleadoHome.findAll();
 
             //TODO STREAMS
-            var solList = list.stream();
+            var solList = list.stream().filter(e->e.getJefe()!=null&&e.getJefe().getCodigoEmpleado()==7)
+                    .map(e->"Nombre: "+ e.getNombre()+" "+e.getApellido1()+" "+e.getApellido2()+" Email: "+e.getEmail()+" codJefe: "+e.getJefe().getCodigoEmpleado())
+                    .toList();
 
             solList.forEach(System.out::println);
 
@@ -200,7 +202,12 @@ class TestExamenStream {
             List<Cliente> list = clienteHome.findAll();
 
             //TODO STREAMS
-            var solList = list.stream();
+            var solList = list.stream()
+                    .sorted(comparing((Cliente c)->c.getRepresentanteVentas().getApellido1())
+                            .reversed()
+                            .thenComparing(Cliente::getNombreCliente))
+                    .map(c->"Cliente: "+c.getNombreCliente()+" Representante: "+c.getRepresentanteVentas().getNombre()+" "+c.getRepresentanteVentas().getApellido1())
+                    .toList();
 
             solList.forEach(System.out::println);
 
@@ -236,9 +243,16 @@ class TestExamenStream {
             } catch (ParseException e) {
                 throw new RuntimeException(e);
             }
-
+        //se ha usado FechaPedido porque las rechazadas no tienen fecha de entrega y se supone que es el momiento que se ha rechazado
             //TODO STREAMS
-            var solList = list.stream();
+            var solList = list.stream().filter(p->p.getEstado().equals("Rechazado")
+                            && p.getFechaPedido().after(fin2008)
+                            &&p.getFechaPedido().before(inicio2010))
+                            //opcion 2 p.getFechaPedido().toString().startsWith("2009")
+                    .sorted(comparing(Pedido::getFechaEsperada).reversed())
+                    .map(p-> "Fecha: "+p.getFechaPedido()+" Cliente: "+p.getCliente().getNombreCliente()+" Estado: "+p.getEstado()+" Representante: "+p.getCliente().getRepresentanteVentas().getNombre()+" Estado: "+p.getEstado()
+                    )
+                    .toList();
 
             solList.forEach(System.out::println);
 
@@ -264,8 +278,11 @@ class TestExamenStream {
             List<Cliente> list = clienteHome.findAll();
 
             //TODO STREAMS
-            var solList = list.stream();
-
+            var solList = list.stream()
+                    .filter(c->!c.getPais().equals("Spain"))
+                    .sorted(comparing(Cliente::getNombreCliente))
+                    .map(Cliente::getNombreCliente)
+                    .toList();
             solList.forEach(System.out::println);
 
             clienteHome.commitTransaction();
@@ -291,7 +308,11 @@ class TestExamenStream {
             List<Oficina> list = oficinaHome.findAll();
 
             //TODO STREAMS
-            var solList = list.stream();
+            var solList = list.stream()
+                    .filter(oficina-> oficina.getEmpleados().stream()
+                            .anyMatch(empleado-> empleado.getClientes().stream()
+                                    .anyMatch(cliente->cliente.getCiudad().equals("Fuenlabrada"))))
+                    .map(Oficina::getLineaDireccion1);
 
             solList.forEach(System.out::println);
 
@@ -317,7 +338,10 @@ class TestExamenStream {
             List<Cliente> list = clienteHome.findAll();
 
             //TODO STREAMS
-            var solList = list.stream();
+            var solList = list.stream()
+                    .filter(c->!c.getPedidos().isEmpty()&&c.getPagos().isEmpty())
+                    .map(Cliente::getNombreCliente)
+                    .toList();
 
             solList.forEach(System.out::println);
 
@@ -343,7 +367,7 @@ class TestExamenStream {
             List<Cliente> list = clienteHome.findAll();
 
             //TODO STREAMS
-            Map<String, Long> solList = null;//list.stream();
+            Map<String, Long> solList = list.stream().collect(groupingBy(Cliente::getPais,counting()));//list.stream();
 
             solList.forEach((s, aLong) -> System.out.println(s + ": " + aLong));
 
@@ -373,8 +397,10 @@ class TestExamenStream {
             List<DetallePedido> list = detallePedidoHome.findAll();
 
             //TODO STREAMS
-            BigDecimal baseImponible = null;//list.stream();
-
+            BigDecimal baseImponible = list.stream().map(detallePedido -> detallePedido.getPrecioUnidad().multiply(new BigDecimal(detallePedido.getCantidad()))).reduce(BigDecimal::add).orElse(null);
+            System.out.println("baseImponible: "+baseImponible);
+            System.out.println("IVA: "+baseImponible.multiply(new BigDecimal("21")));
+            System.out.println("IVA: "+baseImponible.multiply(new BigDecimal("21")).add(baseImponible));
             detallePedidoHome.commitTransaction();
         } catch (RuntimeException e) {
             e.printStackTrace();
@@ -397,7 +423,10 @@ class TestExamenStream {
             List<Cliente> list = clienteHome.findAll();
 
             //TODO STREAMS
-            var solList = list.stream();
+            //creo que es menor... no estoy seguro.... no me ha dado tiempo para comprobar
+            var solList = list.stream().filter(c->c.getLimiteCredito().compareTo(c.getPagos().stream().map(Pago::getTotal).reduce(BigDecimal::add).orElse(BigDecimal.ZERO))<0)
+                    .map(Cliente::getNombreCliente)
+                    .toList();
 
             solList.forEach(System.out::println);
 
